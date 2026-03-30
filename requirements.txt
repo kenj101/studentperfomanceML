@@ -1,4 +1,7 @@
-streamlit
+Flask
 pandas
 scikit-learn
 numpy
+matplotlib
+seaborn
+waitress

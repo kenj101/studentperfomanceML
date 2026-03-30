@@ -30,10 +30,12 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 X = df.drop(columns=["G1", "G2", "G3", "result"])  # remove grades and target
 y = df["result"]
 
-# Encode categorical (text) columns
-le = LabelEncoder()
-for col in X.select_dtypes(include="object").columns:
-    X[col] = le.fit_transform(X[col])
+# Encode categorical (text) columns and keep encoders for future user samples
+encoders = {}
+for col in X.select_dtypes(include=["object", "string"]).columns:
+    le = LabelEncoder()               # create a new encoder per column
+    X[col] = le.fit_transform(X[col].astype(str))  # ensure column is string
+    encoders[col] = le
 
 # Normalize numerical features
 scaler = StandardScaler()
@@ -54,10 +56,6 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-# Fix the pandas warning
-for col in X.select_dtypes(include="str").columns:
-    X[col] = le.fit_transform(X[col])
-
 # --- Model 1: Logistic Regression ---
 lr = LogisticRegression(max_iter=1000)
 lr.fit(X_train, y_train)
@@ -72,6 +70,13 @@ dt_pred = dt.predict(X_test)
 knn = KNeighborsClassifier(n_neighbors=5)
 knn.fit(X_train, y_train)
 knn_pred = knn.predict(X_test)
+
+# Save trained models for Flask app
+import pickle
+with open('models.pkl', 'wb') as f:
+    pickle.dump({'lr': lr, 'dt': dt, 'knn': knn, 'scaler': scaler, 'encoders': encoders, 'feature_names': list(X.columns)}, f)
+
+print("Models saved to models.pkl")
 
 # --- Print Results ---
 models = {
@@ -119,3 +124,16 @@ plt.savefig("confusion_matrices.png")
 plt.show()
 
 print("Charts saved!")
+
+# --- Single-student prediction example (using first row of the original data) ---
+print("\nSingle-student prediction example")
+sample_idx = 0
+sample_features = X.iloc[[sample_idx]]
+sample_scaled = scaler.transform(sample_features)
+
+for name, model in [("Logistic Regression", lr), ("Decision Tree", dt), ("k-NN", knn)]:
+    pred = model.predict(sample_scaled)[0]
+    print(f"{name}: prediction = {pred} ({'pass' if pred == 1 else 'fail'})")
+
+actual = y.iloc[sample_idx]
+print(f"Actual label for sample index {sample_idx}: {actual} ({'pass' if actual == 1 else 'fail'})")

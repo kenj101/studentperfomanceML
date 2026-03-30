@@ -647,48 +647,58 @@ function knnPredict(feat){
 
 function runPrediction(){
   const feat={
-    G1:+document.getElementById('f-g1').value||0,
-    G2:+document.getElementById('f-g2').value||0,
-    age:+document.getElementById('f-age').value||16,
-    studytime:+document.getElementById('f-study').value,
-    failures:+document.getElementById('f-fail').value,
-    absences:+document.getElementById('f-abs').value,
-    Medu:+document.getElementById('f-medu').value,
-    Fedu:+document.getElementById('f-fedu').value,
-    traveltime:+document.getElementById('f-travel').value,
-    Walc:+document.getElementById('f-walc').value,
-    Dalc:+document.getElementById('f-dalc').value,
-    higher:+document.getElementById('f-higher').value,
-    internet:+document.getElementById('f-internet').value,
-    famsup:+document.getElementById('f-famsup').value,
-    schoolsup:+document.getElementById('f-schoolsup').value,
-    romantic:+document.getElementById('f-romantic').value,
-    freetime:+document.getElementById('f-free').value,
+    school: document.getElementById('f-school').value,
+    sex: document.getElementById('f-sex').value,
+    age: +document.getElementById('f-age').value || 16,
+    address: document.getElementById('f-addr').value,
+    famsize: document.getElementById('f-famsize').value,
+    studytime: +document.getElementById('f-study').value,
+    failures: +document.getElementById('f-fail').value,
+    absences: +document.getElementById('f-abs').value,
+    Medu: +document.getElementById('f-medu').value,
+    Fedu: +document.getElementById('f-fedu').value,
+    traveltime: +document.getElementById('f-travel').value,
+    Walc: +document.getElementById('f-walc').value,
+    Dalc: +document.getElementById('f-dalc').value,
+    higher: +document.getElementById('f-higher').value,
+    internet: +document.getElementById('f-internet').value,
+    famsup: +document.getElementById('f-famsup').value,
+    schoolsup: +document.getElementById('f-schoolsup').value,
+    romantic: +document.getElementById('f-romantic').value,
+    freetime: +document.getElementById('f-free').value,
+    G1: +document.getElementById('f-g1').value || 0,
+    G2: +document.getElementById('f-g2').value || 0,
   };
 
   document.getElementById('spinner').style.display='block';
   document.getElementById('result-section').style.display='none';
 
-  setTimeout(()=>{
-    const lrP=lrPredict(feat);
-    const dtP=dtPredict(feat);
-    const knnP=knnPredict(feat);
-    const finalP=lrP; // Logistic regression is best model
-
+  fetch('/predict', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(feat)
+  })
+  .then(response => response.json())
+  .then(data => {
     document.getElementById('spinner').style.display='none';
     document.getElementById('result-section').style.display='block';
 
-    const isPass=finalP>=0.5;
-    const pct=Math.round(finalP*100);
+    const lrP = data.lr_prob;
+    const dtP = data.dt_prob;
+    const knnP = data.knn_prob;
+    const finalP = data.final_prediction;
+    const pct = Math.round(data.confidence * 100);
 
-    document.getElementById('verdict-label').textContent=isPass?'Likely to pass':'At risk of failing';
+    document.getElementById('verdict-label').textContent=finalP?'Likely to pass':'At risk of failing';
     const pill=document.getElementById('verdict-pill');
-    pill.textContent=isPass?`PASS — ${pct}% confidence`:`FAIL — ${100-pct}% confidence`;
-    pill.className='pill '+(isPass?'pill-pass':'pill-fail');
+    pill.textContent=finalP?`PASS — ${pct}% confidence`:`FAIL — ${100-pct}% confidence`;
+    pill.className='pill '+(finalP?'pill-pass':'pill-fail');
 
     const fill=document.getElementById('conf-fill');
     fill.style.width='0%';
-    fill.className='conf-fill'+(isPass?'':' fail');
+    fill.className='conf-fill'+(finalP?'':' fail');
     setTimeout(()=>fill.style.width=pct+'%',50);
     document.getElementById('conf-pct').textContent=pct+'%';
 
@@ -700,8 +710,9 @@ function runPrediction(){
     document.getElementById('m-risk').style.color=riskColor;
     document.getElementById('m-risk-sub').textContent=pct>=75?'good trajectory':pct>=55?'needs monitoring':'intervention advised';
 
-    // Build reasons
+    // Build reasons (keeping the same logic as before)
     const reasons=[];
+
     if(feat.failures===0) reasons.push({t:'pos',title:'No past failures',desc:'Zero failures is the strongest predictor of passing — students with 0 failures pass at ~74% vs ~28% for those with 2+.'});
     else if(feat.failures>=2) reasons.push({t:'neg',title:`${feat.failures} past failures`,desc:'Multiple past failures significantly reduce pass probability. Each failure reduces odds by ~30%.'});
     else reasons.push({t:'neu',title:'1 past failure',desc:'One failure moderately reduces pass probability. Close monitoring recommended.'});
@@ -744,7 +755,12 @@ function runPrediction(){
       </div>`;
     }).join('');
 
-  }, 600);
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    document.getElementById('spinner').style.display='none';
+    alert('Error making prediction. Please try again.');
+  });
 }
 
 // ── FALLBACK DATA ────────────────────────────────────────
