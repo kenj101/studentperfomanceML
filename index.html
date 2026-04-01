@@ -535,10 +535,14 @@ const featMeta={
 
 function buildFeatureCharts(){
   drawFeatChart('studytime');
-  const studyPass=[1,2,3,4].map(s=>{const g=MAT.filter(r=>r.studytime===s);return g.length?Math.round(g.filter(r=>r.result===1).length/g.length*100):0;});
+  // Use both Math and Portuguese data for a stable pass-rate signal
+  const studyPass=[1,2,3,4].map(s=>{
+    const g=ALL.filter(r=>Number(r.studytime)===s);
+    return g.length?Math.round(g.filter(r=>r.result===1).length/g.length*100):0;
+  });
   new Chart(document.getElementById('ch-pr-study'),{type:'line',data:{labels:['<2h','2–5h','5–10h','>10h'],datasets:[{data:studyPass,borderColor:'#639922',backgroundColor:'rgba(99,153,34,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#639922',pointRadius:5}]},options:{...cOpts(),scales:{x:{grid:{color:gc},ticks:{color:tc,font:pFont}},y:{min:0,max:100,grid:{color:gc},ticks:{color:tc,font:pFont,callback:v=>v+'%'}}}}});
   const bins=[[0,4],[5,9],[10,14],[15,19],[20,39],[40,99]];
-  const absCounts=bins.map(([lo,hi])=>MAT.filter(r=>r.absences>=lo&&r.absences<=hi).length);
+  const absCounts=bins.map(([lo,hi])=>ALL.filter(r=>r.absences>=lo&&r.absences<=hi).length);
   new Chart(document.getElementById('ch-abs'),{type:'bar',data:{labels:bins.map(([a,b])=>`${a}–${b}`),datasets:[{data:absCounts,backgroundColor:'#ba7517',borderRadius:4}]},options:cOpts()});
 }
 
